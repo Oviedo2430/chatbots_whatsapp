@@ -1,0 +1,1035 @@
+{
+  "name": "My workflow 5",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "457f3477-b2f7-4975-a682-005704c05519",
+      "name": "Webhook",
+      "webhookId": "2bcc7565-7b8f-4735-9403-117db548d0c0"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('Webhook').first().json.body.data.key.fromMe }}",
+              "value2": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        -16
+      ],
+      "id": "aa76f159-221f-46fc-b7a4-0113bf2024f2",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "product",
+        "operation": "getAll",
+        "returnAll": true,
+        "additionalFields": {
+          "product_type": "Calzado"
+        }
+      },
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -16
+      ],
+      "id": "7ec86682-131f-4aa4-ad2d-9628f4619ae6",
+      "name": "Get many products",
+      "credentials": {
+        "shopifyOAuth2Api": {
+          "id": "PTC2dsmLSULOXKiA",
+          "name": "Shopify CHL Store"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.estado_embudo }}",
+                    "rightValue": "Etapa 4",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "931bcbb6-f8a3-41c5-8035-5436ffb38058"
+                  },
+                  {
+                    "leftValue": "={{ $json.output.estado_embudo }}",
+                    "rightValue": "Etapa_4",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "476fad38-dbf2-46e2-a323-d75acdaced43"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        -16
+      ],
+      "id": "45757496-34b2-4d5b-b612-8642b90d2784",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ceo-evolution-api.ei9yfj.easypanel.host/message/sendText/CHL%20Store",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Webhook').item.json.body.data.key.remoteJid }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.output.mensaje_whatsapp_chunk }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1584,
+        80
+      ],
+      "id": "306795b5-0e66-4d5c-93aa-888826bfb1e5",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "5AY9E3NtnI1W8wX4",
+          "name": "evo_chl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let md = \"MODELO | VARIANTE (Talla/Color) | PRECIO | ID_PRODUCTO | ID_VARIANTE\\n---|---|---|---|---\\n\";\nfor (let zapato of $input.all()) {\n  for (let v of zapato.json.variants) {\n    // Aseguramos que el precio no tenga decimales innecesarios para evitar confusiones de la IA\n    let price_str = String(v.price).replace('.00', '');\n    md += `${zapato.json.title} | ${v.title} | ${price_str} | ${zapato.json.id} | ${v.id}\\n`;\n  }\n}\nreturn [{ json: { catalogo_markdown: md } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -16
+      ],
+      "id": "4cc4b502-94d1-4528-8831-1d67478f684d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://chl-store.myshopify.com/admin/api/2024-04/orders.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "shopifyOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"order\": {\n    \"financial_status\": \"pending\",\n    \"email\": \"{{ $json.output.datos_extraidos.telefono }}@whatsapp.com\",\n    \"tags\": \"Whatsapp\",\n    \"shipping_address\": {\n      \"first_name\": \"{{ $json.output.datos_extraidos.nombre }}\",\n      \"last_name\": \".\",\n      \"address1\": \"{{ $json.output.datos_extraidos.direccion }}\",\n      \"city\": \"{{ $json.output.datos_extraidos.ciudad }}\",\n      \"province\": \"{{ $json.output.datos_extraidos.departamento }}\",\n      \"phone\": \"{{ $json.output.datos_extraidos.telefono }}\",\n      \"country\": \"Colombia\"\n    },\n    \"line_items\": [\n      {\n        \"product_id\": {{ Number($json.output.datos_extraidos.id_producto) || null }},\n        \"variant_id\": {{ Number($json.output.datos_extraidos.id_variante) || null }},\n        \"title\": \"{{ $json.output.datos_extraidos.referencia }}\",\n        \"quantity\": 1\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "http-shopify-order",
+      "name": "Create an order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1584,
+        -112
+      ],
+      "credentials": {
+        "shopifyOAuth2Api": {
+          "id": "PTC2dsmLSULOXKiA",
+          "name": "Shopify CHL Store"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"mensaje_whatsapp\": {\n      \"type\": \"string\"\n    },\n    \"estado_embudo\": {\n      \"type\": \"string\"\n    },\n    \"datos_extraidos\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"nombre\": {\n          \"type\": \"string\"\n        },\n        \"direccion\": {\n          \"type\": \"string\"\n        },\n        \"ciudad\": {\n          \"type\": \"string\",\n          \"description\": \"Municipio exacto del env\\u00edo\"\n        },\n        \"departamento\": {\n          \"type\": \"string\",\n          \"description\": \"Departamento oficial en Colombia. Infi\\u00e9relo autom\\u00e1ticamente basado en la ciudad si el cliente no lo da expl\\u00edcitamente.\"\n        },\n        \"telefono\": {\n          \"type\": \"string\"\n        },\n        \"talla\": {\n          \"type\": \"string\"\n        },\n        \"color\": {\n          \"type\": \"string\"\n        },\n        \"referencia\": {\n          \"type\": \"string\"\n        },\n        \"id_producto\": {\n          \"type\": \"string\",\n          \"description\": \"Busca el producto elegido en el cat\\u00e1logo y COPIA EXACTAMENTE el n\\u00famero num\\u00e9rico de id_producto.\"\n        },\n        \"id_variante\": {\n          \"type\": \"string\",\n          \"description\": \"Busca la variante exacta que coincida con la talla y color elegidos y COPIA EXACTAMENTE su variant_id num\\u00e9rico.\"\n        },\n        \"precio_unitario\": {\n          \"type\": \"string\",\n          \"description\": \"Copia exacta del campo precio del cat\\u00e1logo.\"\n        }\n      }\n    }\n  },\n  \"required\": [\n    \"mensaje_whatsapp\",\n    \"estado_embudo\",\n    \"datos_extraidos\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1152,
+        208
+      ],
+      "id": "715c4cdf-909f-431b-a2a6-577c0f0f5a4d",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ceo-evolution-api.ei9yfj.easypanel.host/message/sendText/CHL%20Store ",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Webhook').item.json.body.data.key.remoteJid }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('AI Agent').item.json.output.mensaje_whatsapp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1808,
+        -112
+      ],
+      "id": "950b22c4-c7fa-4b37-80cc-8eb70cae27f2",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "5AY9E3NtnI1W8wX4",
+          "name": "evo_chl"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2a14e9f-9a00-4b3f-a3f8-6e5513ab43e6",
+              "name": "system_message",
+              "value": "=\"Eres un experto en calzado de nuestra tienda CHL Store. Tu objetivo es asesorar a los clientes, resolver sus dudas sobre los zapatos y cerrar ventas de manera amable, profesional y persuasiva.\\n\\nREGLAS ESTRICTAS DE COMPORTAMIENTO:\\n1. Límites de conocimiento: SOLO puedes responder basándote en la información de la \\\"TABLA DE CATÁLOGO\\\" a continuación. Si el cliente pregunta por un modelo, color o talla que NO ESTÁ en la tabla, DEBES decirle que no está disponible.\\n2. Métodos de Pago: Nuestra prioridad absoluta es el pago Contra Entrega. El envío es GRATIS.\\n3. Precios Exactos (REGLA CRÍTICA): El precio real de cada zapato está en la columna PRECIO de la tabla. DEBES decir EXACTAMENTE ese precio. Extrae el precio en la variable precio_unitario.\\n\\nEL EMBUDO DE VENTAS (Tus Etapas):\\n- Etapa 1: Exploración. Das detalles del producto y preguntas ciudad.\\n- Etapa 2: Toma de Datos. Pides: Nombre, Dirección, Teléfono, Talla y Color.\\n- Etapa 3: Confirmación. Envías resumen estructurado. Pides confirmación final.\\n- Etapa 4: Cierre. Agradeces y despides.\\n\\nFORMATO DE SALIDA (JSON ESTRICTO):\\nTu respuesta DEBE ser siempre un único objeto JSON válido.\\nREGLA CRÍTICA: Todos los campos extraídos exigen texto (string). Si el cliente no te ha dado un dato, DEBES escribir comillas vacías \\\"\\\". NUNCA uses null ni la palabra \\\"empty\\\".\\nREGLA WHATSAPP: Nunca uses salto de linea literal en el mensaje_whatsapp. Usa comas para listar.\\n\\nREGLA DE MENSAJES CORTOS: Tus respuestas NO deben ser un solo bloque de texto. Separa cada idea o párrafo usando el separador exacto '|||'. Ejemplo: '¡Hola! ||| ¿Qué talla buscas?'. n8n enviará cada bloque como un globo de WhatsApp distinto.\\n\\nREGLA DE IDs (CRÍTICO PARA SHOPIFY): En la Etapa 3 y Etapa 4, es OBLIGATORIO que incluyas el 'id_producto' y el 'id_variante'. Búscalos en la tabla de catálogo (columnas ID_PRODUCTO e ID_VARIANTE) usando la talla y color exactos que eligió el cliente. NUNCA los dejes vacíos.\\n\\nTABLA DE CATÁLOGO (Stock Actual):\\n{{ $json.catalogo_markdown }}\"",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        -16
+      ],
+      "id": "cf6322ad-9626-4d04-9ba0-db8f47c3fb3c",
+      "name": "Edit Fields (Prompt Builder)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Evaluar y Combinar').item.json.combined_message }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "={{ $json.system_message }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1000,
+        -16
+      ],
+      "id": "2f3feac0-94c6-4b96-a511-999a0be06ff2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        208
+      ],
+      "id": "b1f1881e-a3df-433a-a839-4277f44837d5",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "RwPsz86STZZpVgGE",
+          "name": "Gemini Brain"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.data.key.remoteJid }}_3",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1024,
+        208
+      ],
+      "id": "8208e9b7-7421-4c7e-b24c-7b7b3be59022",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mensajes_pendientes (telefono, mensaje, timestamp) VALUES ('{{ $('Preparar Datos').item.json.telefono }}', '{{ ($('Preparar Datos').item.json.mensaje || \"\").replace(/'/g, \"''\") }}', {{ $('Preparar Datos').item.json.timestamp }})",
+        "additionalFields": {}
+      },
+      "id": "c9230eaf-e44d-4442-9340-9ea0ce5b2ea8",
+      "name": "Insertar Mensaje",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        380,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "A_REEMPLAZAR",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "id": "051b4eec-3b37-4ca7-b5fc-93484bb81285",
+      "name": "Wait 15s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM mensajes_pendientes WHERE telefono = '{{ $('Webhook').item.json.body.data.key.remoteJid }}'",
+        "additionalFields": {}
+      },
+      "id": "a8537d7b-02f1-4953-8e6d-1ce6e01df89b",
+      "name": "Obtener Mensajes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "A_REEMPLAZAR",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const remoteJid = $('Webhook').first().json.body.data.key.remoteJid;\nconst rows = $input.all().map(i => i.json).filter(i => i.telefono === remoteJid);\nif (rows.length === 0) {\n  return []; // Ya fue procesado por otra ejecución\n}\n// Buscar el timestamp más reciente\nlet maxTimestamp = 0;\nrows.forEach(r => {\n  if (r.timestamp > maxTimestamp) maxTimestamp = r.timestamp;\n});\nconst now = Date.now();\n// Si la diferencia es menor a 59 segundos, significa que entró OTRO mensaje después de nosotros, por lo que nosotros morimos y dejamos que el OTRO proceso responda.\nlet isManual = false;\ntry { isManual = ($execution.mode === 'manual'); } catch(e) {}\nif (!isManual && (now - maxTimestamp < 14000)) {\n  return []; \n}\n// ¡Somos el último proceso! Unimos todos los mensajes\nconst combined = rows.sort((a,b) => a.timestamp - b.timestamp).map(r => r.mensaje).join('\\n');\nreturn [{ json: { combined_message: combined, telefono: remoteJid } }];"
+      },
+      "id": "a3ba16c9-7225-49f7-b293-4cee0d8bb2f3",
+      "name": "Evaluar y Combinar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM mensajes_pendientes WHERE telefono = '{{ $('Evaluar y Combinar').item.json.telefono }}'",
+        "additionalFields": {}
+      },
+      "id": "9c37947f-8741-4f8d-82f6-3af1222af48a",
+      "name": "Limpiar Bandeja",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "A_REEMPLAZAR",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $input.first().json;\nlet texto = original.output.mensaje_whatsapp || '';\nlet partes = texto.split('|||').map(t => t.trim()).filter(t => t.length > 0);\nif (partes.length === 0) partes = [texto]; // Fallback\nreturn partes.map(p => { \n  let newJson = JSON.parse(JSON.stringify(original));\n  newJson.output.mensaje_whatsapp_chunk = p;\n  return { json: newJson };\n});"
+      },
+      "id": "cdbc3158-abd4-4a2c-b0c0-fc97d16bd4c6",
+      "name": "Dividir Mensajes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "d37405f9-839f-4aca-a259-cfc05eb384f3",
+      "name": "Loop Mensajes",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1800,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "37286a7a-fa3d-4f2c-b6c9-8cf8cce67092",
+      "name": "Wait 3s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2200,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $('Webhook').first().json.body.data.key.remoteJid }}",
+        "tableName": "historial_whatsapp",
+        "contextWindowLength": 20,
+        "sessionIdType": "customKey"
+      },
+      "id": "867fb9f4-bff8-452a-b1e0-76d8db86e9c6",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.1,
+      "position": [
+        850,
+        600
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "A_REEMPLAZAR",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const remoteJid = $('Webhook').first().json.body.data.key.remoteJid;\nconst mensaje = $('Webhook').first().json.body.data.message.conversation;\nreturn [{ json: {\n  telefono: remoteJid,\n  mensaje: mensaje,\n  timestamp: Date.now()\n} }];"
+      },
+      "id": "c3e342c7-35a8-442e-a593-4088d0ae722d",
+      "name": "Preparar Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "messages.upsert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.body.data.key.fromMe }}",
+                    "rightValue": "false",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Mensaje Nuevo"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "messages.upsert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.body.data.key.fromMe }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.body.data.message?.conversation || $json.body.data.message?.extendedTextMessage?.text || '' }}",
+                    "rightValue": "!pausa",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Pausa Comando"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.event }}",
+                    "rightValue": "messages.upsert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.body.data.key.fromMe }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.body.data.message?.conversation || $json.body.data.message?.extendedTextMessage?.text || '' }}",
+                    "rightValue": "!reanudar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reanudar Comando"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "router-webhook",
+      "name": "Router Webhook",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT telefono FROM contactos_pausados WHERE telefono = '{{ $json.body.data.key.remoteJid }}';",
+        "options": {}
+      },
+      "id": "pg-consultar",
+      "name": "Consultar Pausa",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        400,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "A_REEMPLAZAR",
+          "name": "Supabase Postgres"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Object.keys($json).length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-pausado",
+      "name": "If Pausado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contactos_pausados (telefono) VALUES ('{{ $('Webhook').first().json.body.data.key.remoteJid }}') ON CONFLICT DO NOTHING;",
+        "additionalFields": {}
+      },
+      "id": "pg-auto-pausa",
+      "name": "Auto Pausa BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2000,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "A_REEMPLAZAR",
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contactos_pausados (telefono) VALUES ('{{ $json.body.data.key.remoteJid }}') ON CONFLICT DO NOTHING;"
+      },
+      "id": "ccbeb431-db79-4815-bb00-695dad2a2733",
+      "name": "Pausa Comando BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        400,
+        800
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "Supabase CHL",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM contactos_pausados WHERE telefono = '{{ $json.body.data.key.remoteJid }}';"
+      },
+      "id": "f9495d0d-b7da-4a5d-9e93-db90fa96abfd",
+      "name": "Reanudar Comando BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        400,
+        1000
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "Supabase CHL",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Router Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Preparar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many products": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Create an order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Dividir Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields (Prompt Builder)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        []
+      ]
+    },
+    "Create an order": {
+      "main": [
+        [
+          {
+            "node": "Auto Pausa BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields (Prompt Builder)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Wait 15s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Evaluar y Combinar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar y Combinar": {
+      "main": [
+        [
+          {
+            "node": "Limpiar Bandeja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Bandeja": {
+      "main": [
+        [
+          {
+            "node": "Get many products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dividir Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Loop Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Mensajes": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait 3s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3s": {
+      "main": [
+        [
+          {
+            "node": "Loop Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Datos": {
+      "main": [
+        [
+          {
+            "node": "Insertar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router Webhook": {
+      "main": [
+        [
+          {
+            "node": "Consultar Pausa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Pausa Comando BD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reanudar Comando BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Pausa": {
+      "main": [
+        [
+          {
+            "node": "If Pausado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Pausado": {
+      "main": [
+        [],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15s": {
+      "main": [
+        [
+          {
+            "node": "Obtener Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto Pausa BD": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "e3dcd722-0431-47ac-a012-ba3951e83edc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3001b8c98a0cf2a83d3b1e5ff4d3f277fc26fe307fff3c20d1473b1581963ccd"
+  },
+  "nodeGroups": [],
+  "id": "KqBcsagTVtueNKlc",
+  "tags": []
+}
