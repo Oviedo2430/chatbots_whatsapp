@@ -39,3 +39,17 @@ Para encontrar el ID de una etiqueta específica (ej. "Pausa BOT") entre los mú
 `{{ $('HTTP Request (Get Labels)').all().find(item => item.json.name === 'Pausa BOT').json.id }}`
 
 **Multi-ejecución y Execute Once:** Debido a que `findLabels` devuelve múltiples ítems, el siguiente nodo (`handleLabel`) se ejecutará tantas veces como etiquetas haya (ej. 7 veces). Para evitar inundar la API o la base de datos, **debes activar la opción "Execute Once" (Ejecutar una vez)** en los ajustes (Settings) del nodo `handleLabel`.
+
+
+### D. Evolution API: sendText y el error 400 Bad Request
+**Estructura del Payload:** Al usar el endpoint `message/sendText/`, algunas versiones de la API rechazan el uso de `jsonBody` con `textMessage: { text: ... }` arrojando el error `instance requires property "text"`. Para solucionarlo, usa la opción **"Using Fields"** (o `bodyParameters`) y envía la variable `text` directamente en la raíz junto con `number` y `options`.
+**Sintaxis de Expresiones en n8n:** Al escribir expresiones a mano en un campo, n8n evalúa el contenido de `{{ }}`. Si escribes un `=` antes de las llaves (`={{ }}`) de forma manual en un campo de texto en n8n, el sistema lo interpretará literalmente y concatenará el `=` al resultado (por ejemplo, `=573000000000@s.whatsapp.net`), lo que causará que la API de Evolution devuelva un error de que el número no existe. El `=` es solo un indicador visual de la interfaz de n8n.
+
+### E. Shopify: Extracción de Datos y URLs
+**Atributos Ocultos (note_attributes):** En muchas tiendas de Shopify, si el formulario de pago está modificado o usa aplicaciones de terceros, campos críticos como el teléfono o el nombre no vienen en `$json.shipping_address.phone`, sino dentro de un array llamado `note_attributes`. Es necesario usar un nodo de código JavaScript para iterar sobre `note_attributes` y extraer el valor correcto usando `.find(a => a.name === 'Celular con Whatsapp')`.
+**Error 404 en Creación de Orden:** Si el nodo HTTP Request para crear una orden (`/orders.json`) devuelve un `404 Not Found`, hay dos causas principales:
+1. La URL tiene un dominio inventado o incorrecto (ej. `chl-store.myshopify.com` vs `chlstore-colombia.myshopify.com`). Verifica el dominio real.
+2. El `variant_id` o `product_id` extraído por la IA no existe en la tienda. Verifica qué números exactos devolvió la IA.
+
+### F. Ingeniería de Prompts (FAQ y Enlaces)
+**Manejo de Preguntas Frecuentes:** Si los clientes piden catálogos o guías de tallas repetidamente, es altamente recomendable añadir una sección de "PREGUNTAS FRECUENTES Y ENLACES" en el prompt del sistema de la IA (antes del Embudo de Ventas) dándole reglas estrictas para enviar URLs exactas cuando detecte estas intenciones, separadas por `|||` para enviarse en globos distintos.

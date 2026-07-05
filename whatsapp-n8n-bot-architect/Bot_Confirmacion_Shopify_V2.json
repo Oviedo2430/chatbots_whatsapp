@@ -1,0 +1,131 @@
+{
+  "name": "Bot Confirmación Shopify",
+  "nodes": [
+    {
+      "parameters": {
+        "event": "order/create"
+      },
+      "id": "e4f501cf-9f0e-4ec1-ab0b-41712411e74a",
+      "name": "Shopify Trigger",
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ],
+      "credentials": {
+        "shopifyOAuth2Api": {
+          "id": "Shopify CHL Store",
+          "name": "Shopify OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let phone = $json.phone || $json.customer?.phone || $json.shipping_address?.phone || \"\";\nphone = phone.replace(/\\D/g, '');\nif (phone.length === 10) {\n  phone = '57' + phone;\n}\nlet remoteJid = phone + \"@s.whatsapp.net\";\nreturn {\n  remoteJid,\n  first_name: $json.customer?.first_name || $json.shipping_address?.first_name || \"Cliente\",\n  address: $json.shipping_address?.address1 || \"tu dirección\",\n  city: $json.shipping_address?.city || \"\",\n  items: $json.line_items || []\n};"
+      },
+      "id": "f5e4c02f-b461-419f-b9fb-1e3df6a17ea1",
+      "name": "Formato de Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contactos_pausados (telefono) VALUES ('{{ $json.remoteJid }}') ON CONFLICT DO NOTHING;"
+      },
+      "id": "5dc4607c-3f26-4074-b5ab-efdbb09ad3c3",
+      "name": "Auto Pausa Web",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        640,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "Supabase CHL",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ceo-evolution-api.ei9yfj.easypanel.host/message/sendText/CHL%20Store",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "evolutionApiApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.remoteJid }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ 'Hola ' + $json.first_name + ' 👋, ¡muchas gracias por tu compra en nuestra tienda web! 👟\\n\\nPara poder despachar tu pedido, necesitamos confirmar los siguientes datos:\\n\\n📍 *Dirección:* ' + $json.address + ', ' + $json.city + '\\n🛍️ *Productos:*\\n' + $json.items.map(i => '- ' + i.quantity + 'x ' + i.title).join('\\n') + '\\n\\n¿Los datos son correctos? Por favor responde con un *SÍ* para autorizar el despacho de tu pedido inmediato. 🚀' }}"
+            },
+            {
+              "name": "options",
+              "value": "={{ { delay: 1200, presence: 'composing' } }}"
+            }
+          ]
+        }
+      },
+      "id": "62b21c60-ecbc-4f70-a612-5813d1afb5d4",
+      "name": "Mensaje Confirmación Web",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        860,
+        300
+      ],
+      "credentials": {
+        "evolutionApiApi": {
+          "id": "Evolution API",
+          "name": "Evolution API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Shopify Trigger": {
+      "main": [
+        [
+          {
+            "node": "Formato de Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formato de Datos": {
+      "main": [
+        [
+          {
+            "node": "Auto Pausa Web",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto Pausa Web": {
+      "main": [
+        [
+          {
+            "node": "Mensaje Confirmación Web",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
