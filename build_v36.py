@@ -116,10 +116,11 @@ if "Get many products" in wf["connections"]:
     del wf["connections"]["Get many products"]
 
 for k, targets in wf["connections"].items():
-    for mode, links in targets.items():
-        for link in links:
-            if link["node"] == "Get many products":
-                link["node"] = "GraphQL Shopify"
+    for mode, lists in targets.items():
+        for links in lists:
+            for link in links:
+                if link["node"] == "Get many products":
+                    link["node"] = "GraphQL Shopify"
 
 
 out_path = "/Users/carlosoviedo/Desktop/chatbots_whatsapp/whatsapp-n8n-bot-architect/Flujo_Maestro_V36.json"
