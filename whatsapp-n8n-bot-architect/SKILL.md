@@ -53,3 +53,7 @@ Para encontrar el ID de una etiqueta específica (ej. "Pausa BOT") entre los mú
 
 ### F. Ingeniería de Prompts (FAQ y Enlaces)
 **Manejo de Preguntas Frecuentes:** Si los clientes piden catálogos o guías de tallas repetidamente, es altamente recomendable añadir una sección de "PREGUNTAS FRECUENTES Y ENLACES" en el prompt del sistema de la IA (antes del Embudo de Ventas) dándole reglas estrictas para enviar URLs exactas cuando detecte estas intenciones, separadas por `|||` para enviarse en globos distintos.
+
+
+### G. Versión Estable (13 de Julio)
+**Flujo_Maestro_Estable_Julio_13.json:** Esta es la versión de producción estable confirmada al 13 de Julio de 2026. Contiene todas las correcciones en el Switch Node, el manejo de campos ocultos de Shopify (note_attributes), las reglas de reintento ante caídas de Gemini (Retry on Fail), y el formato exacto de variables y arrays para los envíos a Evolution API.
