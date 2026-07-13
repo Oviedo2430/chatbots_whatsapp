@@ -1,0 +1,166 @@
+{
+  "name": "Recordatorio 24h WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT numero_telefono, nombre, producto_interes FROM leads_whatsapp WHERE estado != 'venta_concretada' AND recordatorio_enviado = false AND ultima_interaccion >= (NOW() - INTERVAL '25 hours') AND ultima_interaccion <= (NOW() - INTERVAL '24 hours');"
+      },
+      "id": "node-get-leads",
+      "name": "Get Leads 24h",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        200,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "ouooyDBAMbCOLds6",
+          "name": "DB_CHLStore"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "node-loop",
+      "name": "Loop Mensajes",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://TU_EVOLUTION_API_URL/message/sendText/TU_INSTANCIA",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ .numero_telefono }}\",\n  \"options\": {\n    \"delay\": 1200,\n    \"presence\": \"composing\"\n  },\n  \"text\": \"{{ .nombre ? 'Hola ' + .nombre + ',' : 'Hola,' }} ayer preguntaste por {{ .producto_interes ? '*' + .producto_interes + '*' : 'nuestro calzado' }}, estamos acá para resolver tus dudas, ¿continuamos con la conversación?\"\n}",
+        "options": {}
+      },
+      "id": "node-send-reminder",
+      "name": "Enviar Recordatorio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": "public",
+        "table": "leads_whatsapp",
+        "updateKey": "numero_telefono",
+        "columns": "recordatorio_enviado",
+        "values": "={{ $json.numero_telefono }},true"
+      },
+      "id": "node-update-lead",
+      "name": "Marcar Enviado BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        800,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "ouooyDBAMbCOLds6",
+          "name": "DB_CHLStore"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Leads 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Leads 24h": {
+      "main": [
+        [
+          {
+            "node": "Loop Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Enviar Recordatorio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Recordatorio": {
+      "main": [
+        [
+          {
+            "node": "Marcar Enviado BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Enviado BD": {
+      "main": [
+        [
+          {
+            "node": "Loop Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
